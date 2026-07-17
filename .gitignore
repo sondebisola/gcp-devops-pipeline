@@ -1,0 +1,17 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Keep committed tfvars for this learning project (personal sandbox, no
+# secrets in them) — if you add real secrets later, move them to a
+# gitignored *.auto.tfvars or Secret Manager instead.
