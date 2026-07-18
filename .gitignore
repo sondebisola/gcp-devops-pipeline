@@ -11,6 +11,8 @@ override.tf.json
 *_override.tf.json
 .terraformrc
 terraform.rc
+terraform.tfvars
+*.local
 
 # Keep committed tfvars for this learning project (personal sandbox, no
 # secrets in them) — if you add real secrets later, move them to a
