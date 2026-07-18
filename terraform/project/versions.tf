@@ -12,6 +12,10 @@ terraform {
   # remote-state bucket until Terraform has created that bucket, so
   # bootstrap-level state stays local. We migrate to remote state in
   # Phase 3 once the bucket exists.
+  backend "gcs" {
+    bucket = "enterpriseai-459922-tfstate"
+    prefix = "project"
+  }
 }
 
 provider "google" {
