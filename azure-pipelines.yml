@@ -1,0 +1,147 @@
+# Azure DevOps pipeline for the gcp-devops-pipeline repo.
+#
+# Flow:
+#   - Any PR into main:      runs `terraform plan` only, as a required check.
+#   - Merge into main:       runs `terraform plan` again, then waits for
+#                             manual approval (via the "gcp-prod-approval"
+#                             environment's checks — configure this once in
+#                             the Azure DevOps portal), then `terraform apply`.
+#
+# Auth: no GCP key anywhere. The AzureCLI@2 task obtains an ID token from
+# the "gcp-terraform" service connection (Workload Identity Federation),
+# which is exchanged for short-lived GCP credentials via impersonation of
+# the terraform-pipeline service account.
+
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+variables:
+  - name: azureServiceConnection
+    value: "gcp-terraform"                 # must match the service connection name you created
+  - name: gcpProjectNumber
+    value: "598007278047"    # gcloud projects describe enterpriseai-459922 --format="value(projectNumber)"
+  - name: gcpPoolId
+    value: "azure-devops-pool"
+  - name: gcpProviderId
+    value: "star-devops-mvp"
+  - name: gcpServiceAccountEmail
+    value: "terraform-pipeline@enterpriseai-459922.iam.gserviceaccount.com"
+  - name: terraformWorkingDir
+    value: "terraform/project"              # change per-stage if you plan multiple modules in one pipeline later
+  - name: GOOGLE_APPLICATION_CREDENTIALS
+    value: "$(Pipeline.Workspace)/.workload_identity.wlconfig"
+
+stages:
+  # ---------------------------------------------------------------------
+  # Stage 1: Plan — runs on every PR and every push to main. Read-only,
+  # never mutates infrastructure. Safe to run without any approval gate.
+  # ---------------------------------------------------------------------
+  - stage: Plan
+    displayName: "Terraform Plan"
+    jobs:
+      - job: TerraformPlan
+        displayName: "terraform plan"
+        pool:
+          vmImage: "ubuntu-latest"
+        steps:
+          - checkout: self
+
+          - task: TerraformInstaller@1
+            displayName: "Install Terraform"
+            inputs:
+              terraformVersion: "1.7.5"
+
+          - task: AzureCLI@2
+            displayName: "Exchange Azure DevOps token for GCP credential config"
+            inputs:
+              connectedServiceNameARM: $(azureServiceConnection)
+              addSpnToEnvironment: true
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              inlineScript: |
+                echo "$idToken" > $(Pipeline.Workspace)/.workload_identity.jwt
+                cat << EOF > $(GOOGLE_APPLICATION_CREDENTIALS)
+                {
+                  "type": "external_account",
+                  "audience": "//iam.googleapis.com/projects/$(gcpProjectNumber)/locations/global/workloadIdentityPools/$(gcpPoolId)/providers/$(gcpProviderId)",
+                  "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+                  "token_url": "https://sts.googleapis.com/v1/token",
+                  "credential_source": {
+                    "file": "$(Pipeline.Workspace)/.workload_identity.jwt"
+                  },
+                  "service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/$(gcpServiceAccountEmail):generateAccessToken"
+                }
+                EOF
+
+          - script: |
+              cd $(terraformWorkingDir)
+              terraform init
+              terraform plan -out=tfplan
+            displayName: "terraform init && plan"
+            env:
+              GOOGLE_APPLICATION_CREDENTIALS: $(GOOGLE_APPLICATION_CREDENTIALS)
+
+  # ---------------------------------------------------------------------
+  # Stage 2: Apply — only runs on main (not PRs, per the `condition`
+  # below), and only after the "gcp-prod-approval" environment's checks
+  # are satisfied. Set that up once: Pipelines > Environments > New
+  # environment > name it gcp-prod-approval > Approvals and checks >
+  # Approvals > add yourself as required approver.
+  # ---------------------------------------------------------------------
+  - stage: Apply
+    displayName: "Terraform Apply"
+    dependsOn: Plan
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: TerraformApply
+        displayName: "terraform apply (requires approval)"
+        pool:
+          vmImage: "ubuntu-latest"
+        environment: "gcp-prod-approval"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: TerraformInstaller@1
+                  displayName: "Install Terraform"
+                  inputs:
+                    terraformVersion: "1.7.5"
+
+                - task: AzureCLI@2
+                  displayName: "Exchange Azure DevOps token for GCP credential config"
+                  inputs:
+                    connectedServiceNameARM: $(azureServiceConnection)
+                    addSpnToEnvironment: true
+                    scriptType: "bash"
+                    scriptLocation: "inlineScript"
+                    inlineScript: |
+                      echo "$idToken" > $(Pipeline.Workspace)/.workload_identity.jwt
+                      cat << EOF > $(GOOGLE_APPLICATION_CREDENTIALS)
+                      {
+                        "type": "external_account",
+                        "audience": "//iam.googleapis.com/projects/$(gcpProjectNumber)/locations/global/workloadIdentityPools/$(gcpPoolId)/providers/$(gcpProviderId)",
+                        "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+                        "token_url": "https://sts.googleapis.com/v1/token",
+                        "credential_source": {
+                          "file": "$(Pipeline.Workspace)/.workload_identity.jwt"
+                        },
+                        "service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/$(gcpServiceAccountEmail):generateAccessToken"
+                      }
+                      EOF
+
+                - script: |
+                    cd $(terraformWorkingDir)
+                    terraform init
+                    terraform apply -auto-approve
+                  displayName: "terraform init && apply"
+                  env:
+                    GOOGLE_APPLICATION_CREDENTIALS: $(GOOGLE_APPLICATION_CREDENTIALS)
