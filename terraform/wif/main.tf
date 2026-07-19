@@ -58,3 +58,6 @@ resource "google_service_account_iam_member" "pipeline_impersonation" {
   role                = "roles/iam.workloadIdentityUser"
   member              = "principal://iam.googleapis.com/${google_iam_workload_identity_pool.azure_devops.name}/subject/${var.azure_devops_subject}"
 }
+
+
+#justspace for pipeline trigger
