@@ -25,6 +25,16 @@ variable "azure_devops_subject" {
   type        = string
 }
 
+variable "azure_devops_app_object_id" {
+  description = "The Entra ID object ID of the auto-created app registration behind the service connection. Used in the attribute condition so ONLY this specific service connection can authenticate — without this, any Azure DevOps org's token could theoretically be crafted to match."
+  type        = string
+}
+
+variable "pipeline_service_account_email" {
+  description = "Email of the terraform-pipeline service account created in the bootstrap module. The federated identity will impersonate this SA rather than being granted GCP roles directly."
+  type        = string
+}
+
 variable "apis_to_enable" {
   description = "Google APIs required across this project's roadmap phases."
   type        = list(string)
