@@ -38,6 +38,7 @@ variables:
   - name: GOOGLE_APPLICATION_CREDENTIALS
     value: "$(Pipeline.Workspace)/.workload_identity.wlconfig"
 
+  - group: gcp-wif-vars
 stages:
   # ---------------------------------------------------------------------
   # Stage 1: Plan — runs on every PR and every push to main. Read-only,
