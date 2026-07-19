@@ -34,7 +34,7 @@ variables:
   - name: gcpServiceAccountEmail
     value: "terraform-pipeline@enterpriseai-459922.iam.gserviceaccount.com"
   - name: terraformWorkingDir
-    value: "terraform/project"              # change per-stage if you plan multiple modules in one pipeline later
+    value: "terraform/wif"              # change per-stage if you plan multiple modules in one pipeline later
   - name: GOOGLE_APPLICATION_CREDENTIALS
     value: "$(Pipeline.Workspace)/.workload_identity.wlconfig"
 
