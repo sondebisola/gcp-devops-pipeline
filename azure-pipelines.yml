@@ -81,9 +81,12 @@ stages:
                 }
                 EOF
 
+
+
           - script: |
               cd $(terraformWorkingDir)
-              terraform init
+              export GOOGLE_APPLICATION_CREDENTIALS="$(Pipeline.Workspace)/.workload_identity.wlconfig"
+              terraform init -reconfigure
               terraform plan -out=tfplan
             displayName: "terraform init && plan"
             env:
@@ -139,10 +142,14 @@ stages:
                       }
                       EOF
 
+              
+
+
                 - script: |
                     cd $(terraformWorkingDir)
-                    terraform init
-                    terraform apply -auto-approve
-                  displayName: "terraform init && apply"
+                    export GOOGLE_APPLICATION_CREDENTIALS="$(Pipeline.Workspace)/.workload_identity.wlconfig"
+                    terraform init -reconfigure
+                    terraform plan -out=tfplan
+                  displayName: "terraform init && plan"
                   env:
                     GOOGLE_APPLICATION_CREDENTIALS: $(GOOGLE_APPLICATION_CREDENTIALS)
