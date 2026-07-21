@@ -45,3 +45,19 @@ resource "google_storage_bucket_iam_member" "pipeline_state_access" {
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.terraform_pipeline.email}"
 }
+
+# -----------------------------------------------------------------------
+# PROJECT-level grant #1: enabling APIs. This is the first thing
+# terraform/project actually does (google_project_service resources), and
+# it requires a project-scoped permission — bucket access alone doesn't
+# cover it. Note this is intentionally narrow (serviceusage only), not
+# roles/editor — more project-level roles get added here, one at a time,
+# as later phases (networking, compute) introduce new resource types that
+# need them. Each addition should be traceable to the phase that required
+# it, same discipline as the bucket-scoped grant above.
+# -----------------------------------------------------------------------
+resource "google_project_iam_member" "pipeline_service_usage_admin" {
+  project = var.project_id
+  role    = "roles/serviceusage.serviceUsageAdmin"
+  member  = "serviceAccount:${google_service_account.terraform_pipeline.email}"
+}
