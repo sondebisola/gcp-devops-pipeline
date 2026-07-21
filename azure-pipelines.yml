@@ -60,14 +60,16 @@ stages:
               terraformVersion: "1.7.5"
 
           - task: AzureCLI@2
-            displayName: "Exchange Azure DevOps token for GCP credential config"
+            displayName: "Generate Entra ID App Token for GCP"
             inputs:
               connectedServiceNameARM: $(azureServiceConnection)
               addSpnToEnvironment: true
               scriptType: "bash"
               scriptLocation: "inlineScript"
               inlineScript: |
-                echo "$idToken" > $(Pipeline.Workspace)/.workload_identity.jwt
+                # Mint a proper Entra ID JWT backed by the tenant instead of a personal vstoken
+                az account get-access-token --resource "8deeb854-8bd9-446a-ba26-2ead0bd8b14c" --query accessToken -o tsv > $(Pipeline.Workspace)/.workload_identity.jwt
+
                 cat << EOF > $(GOOGLE_APPLICATION_CREDENTIALS)
                 {
                   "type": "external_account",
@@ -121,14 +123,16 @@ stages:
                     terraformVersion: "1.7.5"
 
                 - task: AzureCLI@2
-                  displayName: "Exchange Azure DevOps token for GCP credential config"
+                  displayName: "Generate Entra ID App Token for GCP"
                   inputs:
                     connectedServiceNameARM: $(azureServiceConnection)
                     addSpnToEnvironment: true
                     scriptType: "bash"
                     scriptLocation: "inlineScript"
                     inlineScript: |
-                      echo "$idToken" > $(Pipeline.Workspace)/.workload_identity.jwt
+                      # Mint a proper Entra ID JWT backed by the tenant instead of a personal vstoken
+                      az account get-access-token --resource "8deeb854-8bd9-446a-ba26-2ead0bd8b14c" --query accessToken -o tsv > $(Pipeline.Workspace)/.workload_identity.jwt
+
                       cat << EOF > $(GOOGLE_APPLICATION_CREDENTIALS)
                       {
                         "type": "external_account",
@@ -141,10 +145,7 @@ stages:
                         "service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/$(gcpServiceAccountEmail):generateAccessToken"
                       }
                       EOF
-
-              
-
-
+                              
                 - script: |
                     cd $(terraformWorkingDir)
                     export GOOGLE_APPLICATION_CREDENTIALS="$(Pipeline.Workspace)/.workload_identity.wlconfig"
