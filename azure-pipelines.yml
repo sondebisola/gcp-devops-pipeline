@@ -96,8 +96,8 @@ stages:
 
           - script: |
               cd $(terraformWorkingDir)
-              terraform init
-              terraform plan -out=tfplan
+              terraform init -input=false
+              terraform plan -input=false -out=tfplan
             displayName: "terraform init && plan"
             env:
               GOOGLE_APPLICATION_CREDENTIALS: $(GOOGLE_APPLICATION_CREDENTIALS)
@@ -106,6 +106,7 @@ stages:
               TF_VAR_azure_devops_issuer_uri: $(TF_VAR_azure_devops_issuer_uri)
               TF_VAR_azure_devops_subject: $(TF_VAR_azure_devops_subject)
               TF_VAR_azure_devops_app_object_id: $(TF_VAR_azure_devops_app_object_id)
+              TF_VAR_pipeline_service_account_email: "terraform-pipeline@$(TF_VAR_project_id).iam.gserviceaccount.com"
 
   # ---------------------------------------------------------------------
   # Stage 2: Apply — only on main, only after approval on the
@@ -158,8 +159,8 @@ stages:
 
                 - script: |
                     cd $(terraformWorkingDir)
-                    terraform init
-                    terraform apply -auto-approve
+                    terraform init -input=false
+                    terraform apply -input=false -auto-approve
                   displayName: "terraform init && apply"
                   env:
                     GOOGLE_APPLICATION_CREDENTIALS: $(GOOGLE_APPLICATION_CREDENTIALS)
@@ -168,3 +169,4 @@ stages:
                     TF_VAR_azure_devops_issuer_uri: $(TF_VAR_azure_devops_issuer_uri)
                     TF_VAR_azure_devops_subject: $(TF_VAR_azure_devops_subject)
                     TF_VAR_azure_devops_app_object_id: $(TF_VAR_azure_devops_app_object_id)
+                    TF_VAR_pipeline_service_account_email: "terraform-pipeline@$(TF_VAR_project_id).iam.gserviceaccount.com"
