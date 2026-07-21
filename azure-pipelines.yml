@@ -70,6 +70,17 @@ stages:
               scriptLocation: "inlineScript"
               inlineScript: |
                 echo "$idToken" > $(Pipeline.Workspace)/.workload_identity.jwt
+                python3 -c "
+                import base64, json
+                token = open('$(Pipeline.Workspace)/.workload_identity.jwt').read().strip()
+                payload = token.split('.')[1]
+                payload += '=' * (-len(payload) % 4)
+                claims = json.loads(base64.urlsafe_b64decode(payload))
+                print('iss:', claims.get('iss'))
+                print('aud:', claims.get('aud'))
+                print('sub:', claims.get('sub'))
+                print('oid:', claims.get('oid'))
+                "
                 cat << EOF > $(GOOGLE_APPLICATION_CREDENTIALS)
                 {
                   "type": "external_account",
