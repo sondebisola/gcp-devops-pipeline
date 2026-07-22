@@ -61,3 +61,17 @@ resource "google_project_iam_member" "pipeline_service_usage_admin" {
   role    = "roles/serviceusage.serviceUsageAdmin"
   member  = "serviceAccount:${google_service_account.terraform_pipeline.email}"
 }
+
+# -----------------------------------------------------------------------
+# PROJECT-level grant #2: servicemanagement.admin. serviceUsageAdmin alone
+# was NOT sufficient for google_project_service to succeed in practice —
+# confirmed by direct testing on 2026-07-21, even though Policy
+# Troubleshooter showed serviceusage.services.enable as granted. Adding
+# this role is what actually resolved the "Error 403: The caller does not
+# have permission" failures on google_project_service.apis.
+# -----------------------------------------------------------------------
+resource "google_project_iam_member" "pipeline_service_management_admin" {
+  project = var.project_id
+  role    = "roles/servicemanagement.admin"
+  member  = "serviceAccount:${google_service_account.terraform_pipeline.email}"
+}
